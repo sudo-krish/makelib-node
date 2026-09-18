@@ -3,19 +3,18 @@
 # ==============================================================================
 
 # File targets for formatting and linting
-SRC_PATTERN  ?= "$(SRC_DIR)/**/*.{ts,js,json,md}"
-TEST_PATTERN ?= "$(TEST_DIR)/**/*.{ts,js,json,md}"
+FORMAT_PATTERN ?= "{$(SRC_DIR),$(TEST_DIR)}/**/*.{ts,js,json,md}"
 
 .PHONY: format format-check lint type-check smell audit secret-scan license-check test check-all
 
 format: ## Format source and test files with Prettier
 	@echo -e "$(GATE_PREFIX) Running Prettier (format write)..."
-	@$(PRETTIER) --write $(SRC_PATTERN) $(TEST_PATTERN) --ignore-unknown
+	@$(PRETTIER) --write $(FORMAT_PATTERN) --ignore-unknown
 	@echo -e "$(SUCCESS_PREFIX) Codebase formatted successfully."
 
 format-check: ## Verify formatting with Prettier without modifying files
 	@echo -e "$(GATE_PREFIX) Checking formatting with Prettier..."
-	@$(PRETTIER) --check $(SRC_PATTERN) $(TEST_PATTERN) --ignore-unknown
+	@$(PRETTIER) --check $(FORMAT_PATTERN) --ignore-unknown
 	@echo -e "$(SUCCESS_PREFIX) Formatting check passed."
 
 lint: ## Run ESLint strict checks

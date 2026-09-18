@@ -69,6 +69,79 @@ export function validateBranchName(branch: string): BranchEvaluation {
   };
 }
 
+const PREFIX_CLASSIFICATION_MAP = new Map<string, { level: SemVerLevel; reason: string }>([
+  [
+    'major',
+    {
+      level: 'major',
+      reason: 'Breaking API changes or incompatible alterations',
+    },
+  ],
+  [
+    'breaking',
+    {
+      level: 'major',
+      reason: 'Breaking API changes or incompatible alterations',
+    },
+  ],
+  [
+    'feat',
+    {
+      level: 'minor',
+      reason: 'New backward-compatible functionality',
+    },
+  ],
+  [
+    'feature',
+    {
+      level: 'minor',
+      reason: 'New backward-compatible functionality',
+    },
+  ],
+  [
+    'fix',
+    {
+      level: 'patch',
+      reason: 'Bug fix or vulnerability patch',
+    },
+  ],
+  [
+    'patch',
+    {
+      level: 'patch',
+      reason: 'Bug fix or vulnerability patch',
+    },
+  ],
+  [
+    'docs',
+    {
+      level: 'patch',
+      reason: 'Documentation updates',
+    },
+  ],
+  [
+    'chore',
+    {
+      level: 'patch',
+      reason: 'Internal refactoring, maintenance, or CI workflow changes',
+    },
+  ],
+  [
+    'refactor',
+    {
+      level: 'patch',
+      reason: 'Internal refactoring, maintenance, or CI workflow changes',
+    },
+  ],
+  [
+    'ci',
+    {
+      level: 'patch',
+      reason: 'Internal refactoring, maintenance, or CI workflow changes',
+    },
+  ],
+]);
+
 /**
  * Maps a branch prefix to SemVer bump level.
  */
@@ -76,40 +149,11 @@ export function getPrefixClassification(prefix: string): {
   level: SemVerLevel;
   reason: string;
 } {
-  switch (prefix) {
-    case 'major':
-    case 'breaking':
-      return {
-        level: 'major',
-        reason: 'Breaking API changes or incompatible alterations',
-      };
-    case 'feat':
-    case 'feature':
-      return {
-        level: 'minor',
-        reason: 'New backward-compatible functionality',
-      };
-    case 'fix':
-    case 'patch':
-      return {
-        level: 'patch',
-        reason: 'Bug fix or vulnerability patch',
-      };
-    case 'docs':
-      return {
-        level: 'patch',
-        reason: 'Documentation updates',
-      };
-    case 'chore':
-    case 'refactor':
-    case 'ci':
-      return {
-        level: 'patch',
-        reason: 'Internal refactoring, maintenance, or CI workflow changes',
-      };
-    default:
-      throw new Error(`Unrecognized branch prefix: '${prefix}'`);
+  const match = PREFIX_CLASSIFICATION_MAP.get(prefix);
+  if (!match) {
+    throw new Error(`Unrecognized branch prefix: '${prefix}'`);
   }
+  return match;
 }
 
 /**
