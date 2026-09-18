@@ -1,0 +1,9 @@
+node_modules/
+dist/
+coverage/
+.makelib/
+templates/
+.turbo/
+*.tsbuildinfo
+package-lock.json
+.git/
