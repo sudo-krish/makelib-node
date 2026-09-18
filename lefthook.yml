@@ -1,0 +1,20 @@
+# ==============================================================================
+# lefthook.yml — Shift-Left Git Hook Pipeline
+# ==============================================================================
+
+pre-commit:
+  parallel: false
+  commands:
+    01-check-branch:
+      run: bash scripts/check-branch.sh
+    02-format:
+      run: npx prettier --check "{src,test}/**/*.{ts,js,json,md}" --ignore-unknown
+    03-lint:
+      run: npx eslint "src/**/*.ts" "test/**/*.ts"
+    04-type-check:
+      run: npx tsc --noEmit --strict
+
+commit-msg:
+  commands:
+    check-branch:
+      run: bash scripts/check-branch.sh
