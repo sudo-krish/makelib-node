@@ -47,8 +47,19 @@ if [ -z "$CURRENT_BRANCH" ]; then
   exit 1
 fi
 
-# Extract prefix before first slash
-PREFIX="${CURRENT_BRANCH%%/*}"
+# Extract prefix
+if [ "$CURRENT_BRANCH" = "main" ] || [ "$CURRENT_BRANCH" = "master" ]; then
+  COMMIT_MSG=$(git log -1 --pretty=%B 2>/dev/null || echo "")
+  if [[ "$COMMIT_MSG" =~ (major|breaking|feat|feature|fix|patch|docs|chore|refactor|ci)/ ]]; then
+    PREFIX="${BASH_REMATCH[1]}"
+    CURRENT_BRANCH="merged PR (${PREFIX}/*)"
+  else
+    PREFIX="patch"
+  fi
+else
+  # Extract prefix before first slash
+  PREFIX="${CURRENT_BRANCH%%/*}"
+fi
 
 SEMVER_LEVEL=""
 SEMVER_REASON=""

@@ -31,11 +31,15 @@ CONFIG_FILES=(
   "vitest.config.ts"
   "lefthook.yml"
   ".secrets.baseline"
+  ".github/workflows/ci.yml"
+  ".github/workflows/release.yml"
 )
 
 copy_or_download() {
   local filename="$1"
   local target="./$filename"
+
+  mkdir -p "$(dirname "$target")"
 
   if [ -f "$target" ]; then
     if grep -qE "(NO-OVERRIDE|DO NOT OVERWRITE)" "$target" 2>/dev/null; then

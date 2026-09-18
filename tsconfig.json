@@ -26,6 +26,6 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true
   },
-  "include": ["src/**/*", "test/**/*"],
-  "exclude": ["node_modules", "dist", "templates"]
+  "include": ["src/**/*", "test/**/*", "../src/**/*"],
+  "exclude": ["node_modules", "dist"]
 }
