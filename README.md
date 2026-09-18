@@ -13,13 +13,14 @@
 
 ## Table of Contents
 
-- [1. Core Architecture &amp; Philosophy](#1-core-architecture--philosophy)
+- [1. Core Architecture & Philosophy](#1-core-architecture--philosophy)
 - [2. Quickstart for Downstream Repositories](#2-quickstart-for-downstream-repositories)
 - [3. The 8 Quality Gates](#3-the-8-quality-gates)
-- [4. Shift-Left Branch Policy &amp; SemVer Release Engine](#4-shift-left-branch-policy--semver-release-engine)
-- [5. Configuration Overrides](#5-configuration-overrides)
-- [6. Operational Targets](#6-operational-targets)
-- [7. Self-Hosting Verification](#7-self-hosting-verification)
+- [4. Shift-Left Branch Policy & SemVer Release Engine](#4-shift-left-branch-policy--semver-release-engine)
+- [5. CI/CD & Automated Release Pipelines](#5-cicd--automated-release-pipelines)
+- [6. Configuration Overrides](#6-configuration-overrides)
+- [7. Operational Targets](#7-operational-targets)
+- [8. Self-Hosting Verification](#8-self-hosting-verification)
 
 ---
 
@@ -114,7 +115,26 @@ Run `make install-hooks` to configure both:
 
 ---
 
-## 5. Configuration Overrides
+## 5. CI/CD & Automated Release Pipelines
+
+`makelib-node` ships with production GitHub Actions workflows for both internal self-hosting and downstream repositories (distributed via `templates/.github/workflows/`):
+
+### Continuous Integration (`.github/workflows/ci.yml`)
+- **Trigger**: Every push to feature branches and pull requests targeting `main`.
+- **Shift-Left Branch Validation**: Verifies that the source branch matches `^(feat|feature|fix|patch|major|breaking|docs|chore|refactor|ci)/[a-z0-9._-]+$`.
+- **Quality Gate Execution**: Sets up Node.js 22, Python 3.11, and `detect-secrets`, then executes `make check-all` (all 8 quality gates sequentially).
+- **Compilation & Artifact Upload**: Executes `make build` and archives `dist/` bundles and `coverage/` reports.
+
+### Continuous Delivery & Automated Release (`.github/workflows/release.yml`)
+- **Trigger**: Automatically upon closing/merging a Pull Request into `main` (or via manual `workflow_dispatch`).
+- **SemVer Level Resolution**: Uses `scripts/semver-release.sh` to extract the merged branch prefix (`major`/`breaking` $\rightarrow$ MAJOR, `feat`/`feature` $\rightarrow$ MINOR, `fix`/`patch`/`docs`/`chore`/`refactor`/`ci` $\rightarrow$ PATCH).
+- **Automated Version Bump**: Bumps `package.json` and `package-lock.json` with `npm version <level> --no-git-tag-version`.
+- **Tag & Release Publishing**: Creates an annotated Git tag `v<version>`, pushes to GitHub with `[skip ci]`, and creates a GitHub Release with compiled distribution assets and auto-generated release notes.
+- **NPM Publishing**: Publishes to the NPM registry if `NPM_TOKEN` secret is configured in repository secrets.
+
+---
+
+## 6. Configuration Overrides
 
 Every Make variable in `core.mk` uses `?=` and can be overridden in downstream Makefiles or via command line arguments:
 
@@ -141,7 +161,7 @@ make test MIN_COVERAGE=90
 
 ---
 
-## 6. Operational Targets
+## 7. Operational Targets
 
 - `make help`: Colorized, self-documenting list of targets parsed dynamically from `##` doc comments.
 - `make clean`: Removes `dist/`, `coverage/`, `.turbo/`, `node_modules/.cache/`, and temporary build artifacts.
@@ -155,7 +175,7 @@ make test MIN_COVERAGE=90
 
 ---
 
-## 7. Self-Hosting Verification
+## 8. Self-Hosting Verification
 
 `makelib-node` is completely self-hosting. To verify the entire toolchain against itself:
 

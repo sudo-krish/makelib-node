@@ -6,7 +6,8 @@
 node_modules/
 .pnp
 .pnp.js
-.agent/
+
+.agent
 
 # Build Outputs
 dist/
