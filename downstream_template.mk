@@ -21,29 +21,56 @@ MAKELIB_DIR  ?= .makelib
 # ------------------------------------------------------------------------------
 # Bootstrap Targets (available even before makelib is fetched)
 # ------------------------------------------------------------------------------
-.PHONY: init-makelib update-makelib sync-config
+.PHONY: init init-makelib update update-makelib sync-config
+
+init: init-makelib
+update: update-makelib
 
 init-makelib: ## Initialize makelib in downstream repository
-	@mkdir -p $(MAKELIB_DIR) scripts
 	@echo "Fetching makelib-node from $(MAKELIB_REPO)@$(MAKELIB_REF)..."
-	@for f in core.mk colors.mk quality.mk release.mk hooks.mk; do \
-		curl -fsSL "$(MAKELIB_URL)/.makelib/$$f" -o "$(MAKELIB_DIR)/$$f"; \
-	done
-	@for s in sync-config.sh check-branch.sh semver-release.sh install-hooks.sh; do \
-		curl -fsSL "$(MAKELIB_URL)/scripts/$$s" -o "scripts/$$s" && chmod +x "scripts/$$s"; \
-	done
-	@bash scripts/sync-config.sh --init
+	@TMP_DIR=$$(mktemp -d 2>/dev/null || mktemp -d -t 'makelib'); \
+	if curl -fsSL "https://github.com/$(MAKELIB_REPO)/archive/$(MAKELIB_REF).tar.gz" | tar -xz -C "$$TMP_DIR" 2>/dev/null; then \
+		EXTRACT_DIR=$$(find "$$TMP_DIR" -mindepth 1 -maxdepth 1 -type d | head -n 1); \
+		mkdir -p $(MAKELIB_DIR) scripts templates; \
+		cp -r "$$EXTRACT_DIR/.makelib/." $(MAKELIB_DIR)/; \
+		cp -r "$$EXTRACT_DIR/scripts/." scripts/ && chmod +x scripts/*.sh; \
+		if [ -d "$$EXTRACT_DIR/templates" ]; then cp -r "$$EXTRACT_DIR/templates/." templates/; fi; \
+		rm -rf "$$TMP_DIR"; \
+	else \
+		rm -rf "$$TMP_DIR"; \
+		echo "Tarball fetch failed, falling back to direct download..."; \
+		mkdir -p $(MAKELIB_DIR) scripts; \
+		for f in colors.mk quality.mk release.mk hooks.mk core.mk; do \
+			curl -fsSL "$(MAKELIB_URL)/.makelib/$$f" -o "$(MAKELIB_DIR)/$$f" || true; \
+		done; \
+		for s in sync-config.sh check-branch.sh semver-release.sh install-hooks.sh; do \
+			curl -fsSL "$(MAKELIB_URL)/scripts/$$s" -o "scripts/$$s" && chmod +x "scripts/$$s" || true; \
+		done; \
+	fi
+	@if [ -f scripts/sync-config.sh ]; then bash scripts/sync-config.sh --init; fi
 	@echo "makelib-node initialized successfully. Run 'make help' or 'make install-hooks'."
 
 update-makelib: ## Update makelib core files to latest ref
-	@mkdir -p $(MAKELIB_DIR) scripts
 	@echo "Updating makelib-node from $(MAKELIB_REPO)@$(MAKELIB_REF)..."
-	@for f in core.mk colors.mk quality.mk release.mk hooks.mk; do \
-		curl -fsSL "$(MAKELIB_URL)/.makelib/$$f" -o "$(MAKELIB_DIR)/$$f"; \
-	done
-	@for s in sync-config.sh check-branch.sh semver-release.sh install-hooks.sh; do \
-		curl -fsSL "$(MAKELIB_URL)/scripts/$$s" -o "scripts/$$s" && chmod +x "scripts/$$s"; \
-	done
+	@TMP_DIR=$$(mktemp -d 2>/dev/null || mktemp -d -t 'makelib'); \
+	if curl -fsSL "https://github.com/$(MAKELIB_REPO)/archive/$(MAKELIB_REF).tar.gz" | tar -xz -C "$$TMP_DIR" 2>/dev/null; then \
+		EXTRACT_DIR=$$(find "$$TMP_DIR" -mindepth 1 -maxdepth 1 -type d | head -n 1); \
+		mkdir -p $(MAKELIB_DIR) scripts templates; \
+		cp -r "$$EXTRACT_DIR/.makelib/." $(MAKELIB_DIR)/; \
+		cp -r "$$EXTRACT_DIR/scripts/." scripts/ && chmod +x scripts/*.sh; \
+		if [ -d "$$EXTRACT_DIR/templates" ]; then cp -r "$$EXTRACT_DIR/templates/." templates/; fi; \
+		rm -rf "$$TMP_DIR"; \
+	else \
+		rm -rf "$$TMP_DIR"; \
+		echo "Tarball fetch failed, falling back to direct download..."; \
+		mkdir -p $(MAKELIB_DIR) scripts; \
+		for f in colors.mk quality.mk release.mk hooks.mk core.mk; do \
+			curl -fsSL "$(MAKELIB_URL)/.makelib/$$f" -o "$(MAKELIB_DIR)/$$f" || true; \
+		done; \
+		for s in sync-config.sh check-branch.sh semver-release.sh install-hooks.sh; do \
+			curl -fsSL "$(MAKELIB_URL)/scripts/$$s" -o "scripts/$$s" && chmod +x "scripts/$$s" || true; \
+		done; \
+	fi
 	@if [ -f scripts/sync-config.sh ]; then bash scripts/sync-config.sh --update; fi
 	@echo "makelib-node updated successfully."
 

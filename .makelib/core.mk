@@ -10,7 +10,7 @@ SHELL := /bin/bash
 MAKELIB_DIR := $(patsubst %/,%,$(dir $(lastword $(MAKEFILE_LIST))))
 
 # Include modular components
-include $(MAKELIB_DIR)/colors.mk
+-include $(MAKELIB_DIR)/colors.mk
 
 # Configurable directory paths (overridable downstream via ?=)
 SRC_DIR       ?= src
@@ -40,9 +40,9 @@ DETECT_SECRETS  ?= detect-secrets
 LICENSE_CHECKER ?= license-checker-rseidelsohn
 
 # Include quality gates, release, and hook modules
-include $(MAKELIB_DIR)/quality.mk
-include $(MAKELIB_DIR)/release.mk
-include $(MAKELIB_DIR)/hooks.mk
+-include $(MAKELIB_DIR)/quality.mk
+-include $(MAKELIB_DIR)/release.mk
+-include $(MAKELIB_DIR)/hooks.mk
 
 .DEFAULT_GOAL := help
 

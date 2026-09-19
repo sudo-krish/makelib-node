@@ -46,10 +46,10 @@ curl -fsSL https://raw.githubusercontent.com/sudo-krish/makelib-node/main/downst
 
 ### Step 2: Initialize makelib
 
-Run `make init-makelib` to fetch the core Make library and golden configurations:
+Run `make init` (or `make init-makelib`) to fetch the core Make library and golden configurations:
 
 ```bash
-make init-makelib
+make init
 ```
 
 This bootstraps:
