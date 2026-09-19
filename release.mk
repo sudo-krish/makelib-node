@@ -1,5 +1,5 @@
 # ==============================================================================
-# .makelib/release.mk — SemVer Release Automation
+# release.mk — SemVer Release Automation
 # ==============================================================================
 
 .PHONY: bump-patch bump-minor bump-major release-classify release-bump release

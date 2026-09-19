@@ -1,12 +1,22 @@
 import { defineConfig } from 'vitest/config';
+import { createRequire } from 'node:module';
+
+const require = createRequire(import.meta.url);
+const coverageModule = require.resolve('@vitest/coverage-v8');
 
 export default defineConfig({
+  resolve: {
+    alias: {
+      '@vitest/coverage-v8': coverageModule,
+    },
+  },
   test: {
     globals: true,
     environment: 'node',
     include: ['test/**/*.test.ts'],
     coverage: {
-      provider: 'v8',
+      provider: 'custom',
+      customProviderModule: coverageModule,
       reporter: ['text', 'json', 'html'],
       include: ['src/**/*.ts'],
       exclude: ['src/**/*.d.ts'],

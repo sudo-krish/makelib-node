@@ -12,7 +12,7 @@ export default tseslint.config(
       'coverage/**',
       'node_modules/**',
       '.makelib/**',
-      'templates/**',
+      'makelib/**',
       '*.config.mjs',
       '*.config.ts',
     ],
