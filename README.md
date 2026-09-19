@@ -26,9 +26,9 @@
 
 ## 1. Core Architecture & Philosophy
 
-1. **Zero-Copy Downstream Model**: Downstream projects do **not** duplicate Makefiles. Instead, they include `.makelib/core.mk` using GNU Make's `-include`. A copy-paste [`downstream_template.mk`](./downstream_template.mk) provides bootstrap targets (`init-makelib`, `update-makelib`, `sync-config`).
-2. **Golden Toolchain Distribution**: Distributes standardized configurations (`tsconfig.json`, `eslint.config.mjs`, `.prettierrc`, `vitest.config.ts`, `lefthook.yml`, `.secrets.baseline`) that downstream repositories synchronize via `make sync-config`.
-3. **Overridable Defaults**: All Make variables in `core.mk` use conditional assignment (`?=`) so downstream repos can override source directories, test directories, coverage thresholds, or binary paths without modifying the core library.
+1. **Zero-Copy Downstream Model**: Downstream projects do **not** duplicate Makefiles or copy configuration templates. Instead, they include `.makelib/core.mk` using GNU Make's `-include`.
+2. **100% Isolated Toolchain (Zero Dependency Pollution)**: Makelib installs all diagnostic tools (`eslint`, `prettier`, `vitest`, `tsup`, `typescript`, etc.) isolated in `.makelib/node_modules/`. Downstream `package.json` and dependencies remain completely untouched.
+3. **Overridable Defaults**: All Make variables use conditional assignment (`?=`) so downstream repos can override source directories, test directories, coverage thresholds, or binary paths without modifying makelib.
 4. **Shift-Left Enforcement**: Invalid branch names and direct commits to `main`/`master` fail immediately at commit time (via Lefthook and native Git hooks) before unclassified code can be committed or pushed.
 5. **Branch-Driven SemVer**: Branch prefixes automatically drive version increments (`major`, `minor`, `patch`) upon release.
 
@@ -36,36 +36,32 @@
 
 ## 2. Quickstart for Downstream Repositories
 
-### Step 1: Copy the downstream template
+### Step 1: Copy the downstream Makefile
 
-Copy [`downstream_template.mk`](./downstream_template.mk) to your repository root as `Makefile`:
+Copy [`downstream_template.mk`](./downstream_template.mk) to your downstream repository root as `Makefile`:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/sudo-krish/makelib-node/main/downstream_template.mk -o Makefile
 ```
 
-### Step 2: Initialize makelib
-
-Run `make init` (or `make init-makelib`) to fetch the core Make library and golden configurations:
+### Step 2: Run `make init`
 
 ```bash
 make init
 ```
 
-This bootstraps:
+That's it! `make init` automatically handles everything with **zero manual Git steps**:
+- Adds `makelib-node` as a Git submodule into `.makelib/`
+- Installs the isolated diagnostic toolchain in `.makelib/node_modules/`
+- Installs shift-left Git hooks (pre-commit, commit-msg)
 
-- `.makelib/` (`core.mk`, `colors.mk`, `quality.mk`, `release.mk`, `hooks.mk`, `package.json`)
-- Isolated diagnostic toolchain in `.makelib/node_modules/`
-- `scripts/` (`sync-config.sh`, `check-branch.sh`, `semver-release.sh`, `install-hooks.sh`)
-- Golden toolchain configs (`tsconfig.json`, `eslint.config.mjs`, `.prettierrc`, `vitest.config.ts`, `lefthook.yml`, `.secrets.baseline`)
-
-### Step 3: Activate shift-left hooks
+### Step 3: Run the Quality Pipeline
 
 ```bash
-make install-hooks
+make check-all
 ```
 
-> **Zero Dependency Pollution**: Makelib manages its own diagnostic toolchain privately inside `.makelib/node_modules/`. Your downstream project's `package.json` and dependencies remain 100% untouched and independent.
+> **Zero Template Copying & Zero Cross-Pollution**: You do not need to copy `eslint.config.mjs`, `.prettierrc`, or `tsconfig.json` into your root. Makelib automatically uses its own configs against your project's `src/` and `test/` unless you choose to provide your own.
 
 ---
 
@@ -119,7 +115,7 @@ Run `make install-hooks` to configure both:
 
 ## 5. CI/CD & Automated Release Pipelines
 
-`makelib-node` ships with production GitHub Actions workflows for both internal self-hosting and downstream repositories (distributed via `templates/.github/workflows/`):
+`makelib-node` ships with production GitHub Actions workflows for both internal self-hosting and downstream repositories:
 
 ### Continuous Integration (`.github/workflows/ci.yml`)
 - **Trigger**: Every push to feature branches and pull requests targeting `main`.

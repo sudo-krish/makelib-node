@@ -1,5 +1,5 @@
 # ==============================================================================
-# .makelib/colors.mk — Terminal Colors & Output Helpers
+# colors.mk — Terminal Colors & Output Helpers
 # ==============================================================================
 
 COLOR_RESET   := \033[0m

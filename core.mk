@@ -1,53 +1,63 @@
 # ==============================================================================
-# .makelib/core.mk — Centralized Make Library Core for Node.js / TypeScript
+# core.mk — Centralized Make Library Core for Node.js / TypeScript
 # ==============================================================================
 
 # Strict Bash shell environment
 SHELL := /bin/bash
 .SHELLFLAGS := -eu -o pipefail -c
 
-# Dynamically determine makelib directory
+# Dynamically determine makelib root directory (handles submodule and standalone)
 MAKELIB_DIR := $(patsubst %/,%,$(dir $(lastword $(MAKEFILE_LIST))))
+ifeq ($(MAKELIB_DIR),)
+  MAKELIB_DIR := .
+endif
+MAKELIB_ROOT := $(MAKELIB_DIR)
 
 # Include modular components
--include $(MAKELIB_DIR)/colors.mk
+-include $(MAKELIB_ROOT)/colors.mk
 
 # Configurable directory paths (overridable downstream via ?=)
 SRC_DIR       ?= src
 TEST_DIR      ?= test
 DIST_DIR      ?= dist
 COVERAGE_DIR  ?= coverage
-TEMPLATES_DIR ?= templates
-SCRIPTS_DIR   ?= scripts
+SCRIPTS_DIR   ?= $(firstword $(wildcard $(MAKELIB_ROOT)/scripts scripts))
 
 # Configurable quality gate thresholds
 MIN_COVERAGE  ?= 80
 
-# Add isolated makelib and local node_modules to PATH and NODE_PATH
-export PATH := $(CURDIR)/$(MAKELIB_DIR)/node_modules/.bin:$(CURDIR)/node_modules/.bin:$(PATH)
-export NODE_PATH := $(CURDIR)/$(MAKELIB_DIR)/node_modules:$(CURDIR)/node_modules:$${NODE_PATH:-}
+# Add isolated makelib submodule and local node_modules to PATH and NODE_PATH
+export PATH := $(CURDIR)/$(MAKELIB_ROOT)/node_modules/.bin:$(CURDIR)/node_modules/.bin:$(PATH)
+export NODE_PATH := $(CURDIR)/$(MAKELIB_ROOT)/node_modules:$(CURDIR)/node_modules:$${NODE_PATH:-}
 
-# Configurable toolchain commands
+# Configurable toolchain commands (resolving from isolated submodule bin first, with fallback to system)
 NODE            ?= node
 NPM             ?= npm
 NPX             ?= npx
-TSC             ?= tsc
-ESLINT          ?= eslint
-PRETTIER        ?= prettier
-VITEST          ?= vitest
-TSUP            ?= tsup
-LEFTHOOK        ?= lefthook
+TSC             ?= $(firstword $(wildcard $(CURDIR)/$(MAKELIB_ROOT)/node_modules/.bin/tsc) tsc)
+ESLINT          ?= $(firstword $(wildcard $(CURDIR)/$(MAKELIB_ROOT)/node_modules/.bin/eslint) eslint)
+PRETTIER        ?= $(firstword $(wildcard $(CURDIR)/$(MAKELIB_ROOT)/node_modules/.bin/prettier) prettier)
+VITEST          ?= $(firstword $(wildcard $(CURDIR)/$(MAKELIB_ROOT)/node_modules/.bin/vitest) vitest)
+TSUP            ?= $(firstword $(wildcard $(CURDIR)/$(MAKELIB_ROOT)/node_modules/.bin/tsup) tsup)
+LEFTHOOK        ?= $(firstword $(wildcard $(CURDIR)/$(MAKELIB_ROOT)/node_modules/.bin/lefthook) lefthook)
 DETECT_SECRETS  ?= detect-secrets
-LICENSE_CHECKER ?= license-checker-rseidelsohn
+LICENSE_CHECKER ?= $(firstword $(wildcard $(CURDIR)/$(MAKELIB_ROOT)/node_modules/.bin/license-checker-rseidelsohn) license-checker-rseidelsohn)
 
 # Include quality gates, release, and hook modules
--include $(MAKELIB_DIR)/quality.mk
--include $(MAKELIB_DIR)/release.mk
--include $(MAKELIB_DIR)/hooks.mk
+-include $(MAKELIB_ROOT)/quality.mk
+-include $(MAKELIB_ROOT)/release.mk
+-include $(MAKELIB_ROOT)/hooks.mk
 
 .DEFAULT_GOAL := help
 
-.PHONY: help clean build
+.PHONY: help clean build makelib-install init
+
+makelib-install: ## Install makelib toolchain dependencies isolated inside submodule
+	@echo -e "$(INFO_PREFIX) Installing isolated makelib toolchain in $(MAKELIB_ROOT)..."
+	@npm --prefix "$(MAKELIB_ROOT)" ci || npm --prefix "$(MAKELIB_ROOT)" install
+	@echo -e "$(SUCCESS_PREFIX) Toolchain ready in $(MAKELIB_ROOT)/node_modules."
+
+init: makelib-install install-hooks ## Initialize makelib toolchain and install git hooks
 
 help: ## Display this colorized, self-documenting help menu
 	@echo -e "$(COLOR_BOLD)$(COLOR_CYAN)======================================================================$(COLOR_RESET)"
@@ -70,7 +80,11 @@ clean: ## Clean build artifacts, caches, and test coverage
 	@rm -rf $(DIST_DIR) $(COVERAGE_DIR) .turbo node_modules/.cache *.tsbuildinfo
 	@echo -e "$(SUCCESS_PREFIX) Workspace cleaned."
 
+BUILD_CMD ?= $(TSUP) $(SRC_DIR)/index.ts --format cjs,esm --dts --clean --out-dir $(DIST_DIR)
+
+ifndef NO_DEFAULT_BUILD
 build: clean ## Compile production bundles into dist/
-	@echo -e "$(INFO_PREFIX) Building production bundle with tsup..."
-	@$(TSUP) $(SRC_DIR)/index.ts --format cjs,esm --dts --clean --out-dir $(DIST_DIR)
+	@echo -e "$(INFO_PREFIX) Building production bundle..."
+	@$(BUILD_CMD)
 	@echo -e "$(SUCCESS_PREFIX) Build completed in $(DIST_DIR)/."
+endif

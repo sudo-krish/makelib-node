@@ -1,90 +1,65 @@
 # ==============================================================================
-# downstream_template.mk — Downstream Makefile for makelib-node
+# Downstream Makefile for makelib-node
 # ==============================================================================
-# Copy this file to your repository root as `Makefile`.
-# It provides zero-copy inclusion of makelib-node toolchain and quality gates.
+# Copy this file as `Makefile` into your repository root and run:
+#   make init        # Automatically adds submodule, installs toolchain & hooks
+#   make check-all   # Runs full 8-stage quality gate pipeline
+#   make help        # Displays self-documenting help menu
 # ==============================================================================
 
-# Makelib repository settings (override if using a fork or internal mirror)
-MAKELIB_REPO ?= sudo-krish/makelib-node
-MAKELIB_REF  ?= main
-MAKELIB_URL  ?= https://raw.githubusercontent.com/$(MAKELIB_REPO)/$(MAKELIB_REF)
+# Makelib repository and directory settings
+MAKELIB_REPO ?= https://github.com/sudo-krish/makelib-node.git
 MAKELIB_DIR  ?= .makelib
 
-# ------------------------------------------------------------------------------
-# Downstream Overrides (uncomment and adjust as needed)
-# ------------------------------------------------------------------------------
+# Downstream Overrides (uncomment and customize as needed)
 # SRC_DIR      ?= src
 # TEST_DIR     ?= test
 # MIN_COVERAGE ?= 80
+# NO_DEFAULT_BUILD := 1   # Uncomment if downstream defines its own custom build target
 
-# ------------------------------------------------------------------------------
-# Bootstrap Targets (available even before makelib is fetched)
-# ------------------------------------------------------------------------------
-.PHONY: init init-makelib update update-makelib sync-config
+.PHONY: init init-makelib update update-makelib
 
 init: init-makelib
 update: update-makelib
 
-init-makelib: ## Initialize makelib in downstream repository
-	@echo "Fetching makelib-node from $(MAKELIB_REPO)@$(MAKELIB_REF)..."
-	@TMP_DIR=$$(mktemp -d 2>/dev/null || mktemp -d -t 'makelib'); \
-	if curl -fsSL "https://github.com/$(MAKELIB_REPO)/archive/$(MAKELIB_REF).tar.gz" | tar -xz -C "$$TMP_DIR" 2>/dev/null; then \
-		EXTRACT_DIR=$$(find "$$TMP_DIR" -mindepth 1 -maxdepth 1 -type d | head -n 1); \
-		mkdir -p $(MAKELIB_DIR) scripts templates; \
-		cp -r "$$EXTRACT_DIR/.makelib/." $(MAKELIB_DIR)/; \
-		cp -r "$$EXTRACT_DIR/scripts/." scripts/ && chmod +x scripts/*.sh; \
-		if [ -d "$$EXTRACT_DIR/templates" ]; then cp -r "$$EXTRACT_DIR/templates/." templates/; fi; \
-		rm -rf "$$TMP_DIR"; \
-	else \
-		rm -rf "$$TMP_DIR"; \
-		echo "Tarball fetch failed, falling back to direct download..."; \
-		mkdir -p $(MAKELIB_DIR) scripts; \
-		for f in colors.mk quality.mk release.mk hooks.mk package.json core.mk; do \
-			curl -fsSL "$(MAKELIB_URL)/.makelib/$$f" -o "$(MAKELIB_DIR)/$$f" || true; \
-		done; \
-		for s in sync-config.sh check-branch.sh semver-release.sh install-hooks.sh; do \
-			curl -fsSL "$(MAKELIB_URL)/scripts/$$s" -o "scripts/$$s" && chmod +x "scripts/$$s" || true; \
-		done; \
+init-makelib: ## Initialize makelib as a submodule, install toolchain, and set up git hooks
+	@if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then \
+		echo "Initializing Git repository..."; \
+		git init; \
 	fi
-	@if [ -f scripts/sync-config.sh ]; then bash scripts/sync-config.sh --init; fi
-	@echo "makelib-node initialized successfully. Run 'make help' or 'make install-hooks'."
+	@if [ ! -e "$(MAKELIB_DIR)/.git" ]; then \
+		if git config --file .gitmodules --get "submodule.$(MAKELIB_DIR).url" >/dev/null 2>&1; then \
+			echo "Initializing existing submodule in $(MAKELIB_DIR)..."; \
+			git -c protocol.file.allow=always submodule update --init --recursive $(MAKELIB_DIR); \
+		else \
+			echo "Adding makelib-node submodule into $(MAKELIB_DIR)..."; \
+			git -c protocol.file.allow=always submodule add $(MAKELIB_REPO) $(MAKELIB_DIR); \
+		fi; \
+	else \
+		echo "Submodule $(MAKELIB_DIR) already present. Updating..."; \
+		git -c protocol.file.allow=always submodule update --init --recursive $(MAKELIB_DIR); \
+	fi
+	@echo "Installing isolated makelib toolchain in $(MAKELIB_DIR)..."
+	@npm --prefix "$(MAKELIB_DIR)" install
+	@if [ -f "$(MAKELIB_DIR)/scripts/install-hooks.sh" ]; then \
+		bash "$(MAKELIB_DIR)/scripts/install-hooks.sh"; \
+	fi
+	@echo "makelib-node initialized successfully! Run 'make check-all' or 'make help'."
 
-update-makelib: ## Update makelib core files to latest ref
-	@echo "Updating makelib-node from $(MAKELIB_REPO)@$(MAKELIB_REF)..."
-	@TMP_DIR=$$(mktemp -d 2>/dev/null || mktemp -d -t 'makelib'); \
-	if curl -fsSL "https://github.com/$(MAKELIB_REPO)/archive/$(MAKELIB_REF).tar.gz" | tar -xz -C "$$TMP_DIR" 2>/dev/null; then \
-		EXTRACT_DIR=$$(find "$$TMP_DIR" -mindepth 1 -maxdepth 1 -type d | head -n 1); \
-		mkdir -p $(MAKELIB_DIR) scripts templates; \
-		cp -r "$$EXTRACT_DIR/.makelib/." $(MAKELIB_DIR)/; \
-		cp -r "$$EXTRACT_DIR/scripts/." scripts/ && chmod +x scripts/*.sh; \
-		if [ -d "$$EXTRACT_DIR/templates" ]; then cp -r "$$EXTRACT_DIR/templates/." templates/; fi; \
-		rm -rf "$$TMP_DIR"; \
-	else \
-		rm -rf "$$TMP_DIR"; \
-		echo "Tarball fetch failed, falling back to direct download..."; \
-		mkdir -p $(MAKELIB_DIR) scripts; \
-		for f in colors.mk quality.mk release.mk hooks.mk package.json core.mk; do \
-			curl -fsSL "$(MAKELIB_URL)/.makelib/$$f" -o "$(MAKELIB_DIR)/$$f" || true; \
-		done; \
-		for s in sync-config.sh check-branch.sh semver-release.sh install-hooks.sh; do \
-			curl -fsSL "$(MAKELIB_URL)/scripts/$$s" -o "scripts/$$s" && chmod +x "scripts/$$s" || true; \
-		done; \
-	fi
-	@if [ -f scripts/sync-config.sh ]; then bash scripts/sync-config.sh --update; fi
+update-makelib: ## Update makelib submodule to latest remote revision
+	@echo "Updating makelib-node submodule in $(MAKELIB_DIR)..."
+	@git -c protocol.file.allow=always submodule update --remote --merge $(MAKELIB_DIR)
+	@npm --prefix "$(MAKELIB_DIR)" install
 	@echo "makelib-node updated successfully."
 
-sync-config: ## Sync golden configurations from makelib
-	@if [ -f scripts/sync-config.sh ]; then \
-		bash scripts/sync-config.sh; \
-	else \
-		echo "makelib scripts not found. Run 'make init-makelib' first."; exit 1; \
-	fi
-
-# ------------------------------------------------------------------------------
-# Zero-Copy Makelib Core Inclusion
-# ------------------------------------------------------------------------------
-# Only include if makelib is fully initialized to prevent errors on partial state
-ifneq ($(wildcard $(MAKELIB_DIR)/hooks.mk),)
+# Include makelib core library
 -include $(MAKELIB_DIR)/core.mk
+
+# If makelib is not yet initialized and user runs another target, guide them
+ifeq ($(wildcard $(MAKELIB_DIR)/core.mk),)
+.DEFAULT_GOAL := help-uninitialized
+
+help-uninitialized:
+	@echo "makelib-node is not initialized in '$(MAKELIB_DIR)'."
+	@echo "Run 'make init' to automatically add the submodule and configure the toolchain."
 endif

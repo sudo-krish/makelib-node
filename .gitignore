@@ -7,7 +7,9 @@ node_modules/
 .pnp
 .pnp.js
 
-.agent
+# Local testing and agent scratch
+.makelib/
+.agent/
 
 # Build Outputs
 dist/

@@ -1,5 +1,5 @@
 # ==============================================================================
-# .makelib/hooks.mk — Git & Lefthook Hook Management
+# hooks.mk — Git & Lefthook Hook Management
 # ==============================================================================
 
 .PHONY: install-hooks check-branch

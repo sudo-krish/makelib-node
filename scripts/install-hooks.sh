@@ -25,9 +25,17 @@ HOOKS_DIR="${GIT_DIR}/hooks"
 mkdir -p "$HOOKS_DIR"
 
 # 1. Install Lefthook if available in makelib or local toolchain
-if [ -f ".makelib/node_modules/.bin/lefthook" ] && [ -f "lefthook.yml" ]; then
-  log_info "Configuring Lefthook git hooks from makelib toolchain..."
-  ./.makelib/node_modules/.bin/lefthook install || log_warn "Lefthook install failed; falling back to native Git hooks."
+LEFTHOOK_BIN=""
+for candidate in "./.makelib/node_modules/.bin/lefthook" "./makelib/node_modules/.bin/lefthook" "./node_modules/.bin/lefthook"; do
+  if [ -x "$candidate" ]; then
+    LEFTHOOK_BIN="$candidate"
+    break
+  fi
+done
+
+if [ -n "$LEFTHOOK_BIN" ] && [ -f "lefthook.yml" ]; then
+  log_info "Configuring Lefthook git hooks from makelib toolchain ($LEFTHOOK_BIN)..."
+  "$LEFTHOOK_BIN" install || log_warn "Lefthook install failed; falling back to native Git hooks."
 elif command -v lefthook >/dev/null 2>&1 && [ -f "lefthook.yml" ]; then
   log_info "Configuring Lefthook git hooks..."
   lefthook install || log_warn "Lefthook install failed; falling back to native Git hooks."
@@ -42,13 +50,16 @@ cat << 'EOF' > "${HOOKS_DIR}/pre-commit"
 set -euo pipefail
 
 # Execute branch policy check
-if [ -f "scripts/check-branch.sh" ]; then
-  bash scripts/check-branch.sh
-fi
+for branch_script in "scripts/check-branch.sh" ".makelib/scripts/check-branch.sh" "makelib/scripts/check-branch.sh"; do
+  if [ -f "$branch_script" ]; then
+    bash "$branch_script"
+    break
+  fi
+done
 
 # Resolve makelib toolchain binaries
-export PATH="./.makelib/node_modules/.bin:./node_modules/.bin:${PATH}"
-export NODE_PATH="./.makelib/node_modules:./node_modules:${NODE_PATH:-}"
+export PATH="./.makelib/node_modules/.bin:./makelib/node_modules/.bin:./node_modules/.bin:${PATH}"
+export NODE_PATH="./.makelib/node_modules:./makelib/node_modules:./node_modules:${NODE_PATH:-}"
 
 # Run fast type check if TypeScript and tsconfig present
 if command -v tsc >/dev/null 2>&1 && [ -f "tsconfig.json" ]; then
