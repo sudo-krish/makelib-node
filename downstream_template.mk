@@ -84,4 +84,7 @@ sync-config: ## Sync golden configurations from makelib
 # ------------------------------------------------------------------------------
 # Zero-Copy Makelib Core Inclusion
 # ------------------------------------------------------------------------------
+# Only include if makelib is fully initialized to prevent errors on partial state
+ifneq ($(wildcard $(MAKELIB_DIR)/hooks.mk),)
 -include $(MAKELIB_DIR)/core.mk
+endif
