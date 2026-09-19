@@ -118,6 +118,26 @@ jobs:
 
       - name: Push release tag
         run: git push --tags
+
+      - name: Create GitHub Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          NEW_VERSION=$(node -p "require('./package.json').version" 2>/dev/null || echo "0.0.0")
+          ASSETS=()
+          if [ -d "dist" ] && [ -n "$(ls -A dist 2>/dev/null)" ]; then
+            tar -czf "dist-v${NEW_VERSION}.tar.gz" -C dist .
+            ASSETS=("dist-v${NEW_VERSION}.tar.gz")
+          fi
+          if gh release view "v${NEW_VERSION}" >/dev/null 2>&1; then
+            if [ ${#ASSETS[@]} -gt 0 ]; then
+              gh release upload "v${NEW_VERSION}" "${ASSETS[@]}" --clobber
+            fi
+          else
+            gh release create "v${NEW_VERSION}" "${ASSETS[@]}" \
+              --title "Release v${NEW_VERSION}" \
+              --generate-notes
+          fi
 EOF
   log_success "Created ${RELEASE_FILE}"
 else
@@ -126,6 +146,15 @@ else
     echo -e "${COLOR_YELLOW}======================================================================${COLOR_RESET}"
     echo -e "${COLOR_YELLOW}[WARN] Existing release workflow (${RELEASE_FILE}) is missing 'submodules: recursive'!${COLOR_RESET}"
     echo -e "${COLOR_YELLOW}       Please add 'submodules: recursive' to your checkout step in ${RELEASE_FILE}.${COLOR_RESET}"
+    echo -e "${COLOR_YELLOW}======================================================================${COLOR_RESET}"
+  fi
+  if grep -q "ASSETS=(dist/\*)" "$RELEASE_FILE"; then
+    echo -e "${COLOR_YELLOW}======================================================================${COLOR_RESET}"
+    echo -e "${COLOR_YELLOW}[WARN] Existing release workflow (${RELEASE_FILE}) uses 'ASSETS=(dist/*)'!${COLOR_RESET}"
+    echo -e "${COLOR_YELLOW}       GitHub Releases will fail with 'read dist/assets: is a directory'.${COLOR_RESET}"
+    echo -e "${COLOR_YELLOW}       Package dist into a tarball instead:${COLOR_RESET}"
+    echo -e "         tar -czf \"dist-v\${NEW_VERSION}.tar.gz\" -C dist ."
+    echo -e "         ASSETS=(\"dist-v\${NEW_VERSION}.tar.gz\")"
     echo -e "${COLOR_YELLOW}======================================================================${COLOR_RESET}"
   fi
 fi
