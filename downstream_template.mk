@@ -30,10 +30,11 @@ init-makelib: ## Initialize makelib as a submodule, install toolchain, and set u
 	@if [ ! -e "$(MAKELIB_DIR)/.git" ]; then \
 		if git config --file .gitmodules --get "submodule.$(MAKELIB_DIR).url" >/dev/null 2>&1; then \
 			echo "Initializing existing submodule in $(MAKELIB_DIR)..."; \
-			git -c protocol.file.allow=always submodule update --init --recursive $(MAKELIB_DIR); \
+			git -c protocol.file.allow=always submodule update --init --recursive $(MAKELIB_DIR) || \
+			git -c protocol.file.allow=always submodule add --force $(MAKELIB_REPO) $(MAKELIB_DIR); \
 		else \
 			echo "Adding makelib-node submodule into $(MAKELIB_DIR)..."; \
-			git -c protocol.file.allow=always submodule add $(MAKELIB_REPO) $(MAKELIB_DIR); \
+			git -c protocol.file.allow=always submodule add --force $(MAKELIB_REPO) $(MAKELIB_DIR); \
 		fi; \
 	else \
 		echo "Submodule $(MAKELIB_DIR) already present. Updating..."; \
