@@ -1,17 +1,15 @@
 # ==============================================================================
 # Downstream Makefile for makelib-node
 # ==============================================================================
-# Add makelib-node as a Git submodule into .makelib (recommended) or makelib:
-#   git submodule add https://github.com/sudo-krish/makelib-node.git .makelib
-#
-# Then run:
-#   make init        # Installs isolated makelib toolchain & Git hooks
+# Copy this file as `Makefile` into your repository root and run:
+#   make init        # Automatically adds submodule, installs toolchain & hooks
 #   make check-all   # Runs full 8-stage quality gate pipeline
 #   make help        # Displays self-documenting help menu
 # ==============================================================================
 
-# Submodule directory (.makelib by default, or makelib)
-MAKELIB_DIR ?= $(firstword $(wildcard .makelib makelib))
+# Makelib repository and directory settings
+MAKELIB_REPO ?= https://github.com/sudo-krish/makelib-node.git
+MAKELIB_DIR  ?= .makelib
 
 # Downstream Overrides (uncomment and customize as needed)
 # SRC_DIR      ?= src
@@ -19,4 +17,49 @@ MAKELIB_DIR ?= $(firstword $(wildcard .makelib makelib))
 # MIN_COVERAGE ?= 80
 # NO_DEFAULT_BUILD := 1   # Uncomment if downstream defines its own custom build target
 
+.PHONY: init init-makelib update update-makelib
+
+init: init-makelib
+update: update-makelib
+
+init-makelib: ## Initialize makelib as a submodule, install toolchain, and set up git hooks
+	@if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then \
+		echo "Initializing Git repository..."; \
+		git init; \
+	fi
+	@if [ ! -e "$(MAKELIB_DIR)/.git" ]; then \
+		if git config --file .gitmodules --get "submodule.$(MAKELIB_DIR).url" >/dev/null 2>&1; then \
+			echo "Initializing existing submodule in $(MAKELIB_DIR)..."; \
+			git -c protocol.file.allow=always submodule update --init --recursive $(MAKELIB_DIR); \
+		else \
+			echo "Adding makelib-node submodule into $(MAKELIB_DIR)..."; \
+			git -c protocol.file.allow=always submodule add $(MAKELIB_REPO) $(MAKELIB_DIR); \
+		fi; \
+	else \
+		echo "Submodule $(MAKELIB_DIR) already present. Updating..."; \
+		git -c protocol.file.allow=always submodule update --init --recursive $(MAKELIB_DIR); \
+	fi
+	@echo "Installing isolated makelib toolchain in $(MAKELIB_DIR)..."
+	@npm --prefix "$(MAKELIB_DIR)" install
+	@if [ -f "$(MAKELIB_DIR)/scripts/install-hooks.sh" ]; then \
+		bash "$(MAKELIB_DIR)/scripts/install-hooks.sh"; \
+	fi
+	@echo "makelib-node initialized successfully! Run 'make check-all' or 'make help'."
+
+update-makelib: ## Update makelib submodule to latest remote revision
+	@echo "Updating makelib-node submodule in $(MAKELIB_DIR)..."
+	@git -c protocol.file.allow=always submodule update --remote --merge $(MAKELIB_DIR)
+	@npm --prefix "$(MAKELIB_DIR)" install
+	@echo "makelib-node updated successfully."
+
+# Include makelib core library
 -include $(MAKELIB_DIR)/core.mk
+
+# If makelib is not yet initialized and user runs another target, guide them
+ifeq ($(wildcard $(MAKELIB_DIR)/core.mk),)
+.DEFAULT_GOAL := help-uninitialized
+
+help-uninitialized:
+	@echo "makelib-node is not initialized in '$(MAKELIB_DIR)'."
+	@echo "Run 'make init' to automatically add the submodule and configure the toolchain."
+endif

@@ -36,37 +36,26 @@
 
 ## 2. Quickstart for Downstream Repositories
 
-### Step 1: Add as a Git Submodule
+### Step 1: Copy the downstream Makefile
 
-In your downstream repository (e.g., `personal-fitness`):
+Copy [`downstream_template.mk`](./downstream_template.mk) to your downstream repository root as `Makefile`:
 
 ```bash
-git submodule add https://github.com/sudo-krish/makelib-node.git .makelib
+curl -fsSL https://raw.githubusercontent.com/sudo-krish/makelib-node/main/downstream_template.mk -o Makefile
 ```
 
-### Step 2: Create a minimal `Makefile`
-
-In your downstream repository root, create a `Makefile`:
-
-```makefile
-MAKELIB_DIR ?= $(firstword $(wildcard .makelib makelib))
-
--include $(MAKELIB_DIR)/core.mk
-```
-
-*(You can also copy [`downstream_template.mk`](./downstream_template.mk) as your `Makefile`)*
-
-### Step 3: Initialize isolated toolchain & Git hooks
+### Step 2: Run `make init`
 
 ```bash
 make init
 ```
 
-This runs:
-- `npm --prefix .makelib install` (installs isolated diagnostic tools in `.makelib/node_modules`)
-- Shift-left Git hook installation (pre-commit, commit-msg)
+That's it! `make init` automatically handles everything with **zero manual Git steps**:
+- Adds `makelib-node` as a Git submodule into `.makelib/`
+- Installs the isolated diagnostic toolchain in `.makelib/node_modules/`
+- Installs shift-left Git hooks (pre-commit, commit-msg)
 
-### Step 4: Run the Quality Pipeline
+### Step 3: Run the Quality Pipeline
 
 ```bash
 make check-all
