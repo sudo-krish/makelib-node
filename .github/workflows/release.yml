@@ -52,7 +52,15 @@ jobs:
           pip install detect-secrets
 
       - name: Install Dependencies
-        run: npm ci
+        run: |
+          if [ -f "package-lock.json" ]; then
+            npm ci || npm install
+          elif [ -f "package.json" ]; then
+            npm install
+          fi
+          if [ -f ".makelib/package.json" ] && [ ! -d ".makelib/node_modules" ]; then
+            npm --prefix .makelib install
+          fi
 
       - name: Run 8-Stage Quality Gate Pipeline
         run: make check-all
@@ -60,43 +68,36 @@ jobs:
           MIN_COVERAGE: 80
 
       - name: Compile Production Bundle
-        run: make build
-
-      - name: Determine SemVer Bump Level
-        id: semver
         run: |
-          MANUAL_OVERRIDE="${{ github.event.inputs.override_level || 'auto' }}"
-          if [ "$MANUAL_OVERRIDE" != "auto" ]; then
-            echo "level=$MANUAL_OVERRIDE" >> $GITHUB_OUTPUT
-            echo "Selected manual override: $MANUAL_OVERRIDE"
-          else
-            SOURCE_BRANCH="${{ github.event.pull_request.head.ref || '' }}"
-            if [ -n "$SOURCE_BRANCH" ]; then
-              BUMP_LEVEL=$(bash scripts/semver-release.sh --level --branch "$SOURCE_BRANCH")
-            else
-              BUMP_LEVEL=$(bash scripts/semver-release.sh --level)
-            fi
-            echo "level=$BUMP_LEVEL" >> $GITHUB_OUTPUT
-            echo "Determined SemVer bump level from branch: $BUMP_LEVEL"
+          if [ -f "src/index.ts" ] || [ -f "tsup.config.ts" ]; then
+            make build
           fi
 
-      - name: Bump Package Version
-        id: bump
+      - name: Calculate Next Version
+        id: semver
         run: |
-          BUMP_LEVEL="${{ steps.semver.outputs.level }}"
-          echo "Applying version bump: $BUMP_LEVEL"
-          npm version "$BUMP_LEVEL" --no-git-tag-version
-          NEW_VERSION=$(node -p "require('./package.json').version")
-          echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
-          echo "New Version: v$NEW_VERSION"
+          OVERRIDE="${{ github.event.inputs.override_level || '' }}"
+          SOURCE_BRANCH="${{ github.event.pull_request.head.ref || '' }}"
+          if [ -n "$OVERRIDE" ] && [ "$OVERRIDE" != "auto" ]; then
+            NEW_VER=$(bash scripts/semver-release.sh --next-version --level "$OVERRIDE")
+          elif [ -n "$SOURCE_BRANCH" ]; then
+            NEW_VER=$(bash scripts/semver-release.sh --next-version --branch "$SOURCE_BRANCH")
+          else
+            NEW_VER=$(bash scripts/semver-release.sh --next-version)
+          fi
+          echo "version=$NEW_VER" >> $GITHUB_OUTPUT
+          echo "Calculated unique next version: v$NEW_VER"
 
       - name: Commit & Tag Release
         run: |
-          NEW_VERSION="${{ steps.bump.outputs.version }}"
+          NEW_VERSION="${{ steps.semver.outputs.version }}"
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add package.json package-lock.json
-          git commit -m "chore(release): v${NEW_VERSION} [skip ci]"
+          bash scripts/semver-release.sh --apply "${NEW_VERSION}"
+          git add package.json package-lock.json 2>/dev/null || true
+          if ! git diff --cached --quiet; then
+            git commit -m "chore(release): v${NEW_VERSION} [skip ci]"
+          fi
           git tag -a "v${NEW_VERSION}" -m "Release v${NEW_VERSION}"
           git push origin main --follow-tags
 
@@ -104,19 +105,28 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          NEW_VERSION="${{ steps.bump.outputs.version }}"
-          gh release create "v${NEW_VERSION}" dist/* \
+          NEW_VERSION="${{ steps.semver.outputs.version }}"
+          ASSETS=()
+          if [ -d "dist" ] && [ -n "$(ls -A dist 2>/dev/null)" ]; then
+            ASSETS=(dist/*)
+          fi
+          gh release create "v${NEW_VERSION}" "${ASSETS[@]}" \
             --title "Release v${NEW_VERSION}" \
             --generate-notes
 
-      - name: Publish to NPM (if NPM_TOKEN configured)
+      - name: Publish to NPM (if NPM_TOKEN configured and package is public)
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
-          if [ -n "${{ secrets.NPM_TOKEN }}" ]; then
-            echo "//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}" > ~/.npmrc
-            npm publish --access public
-            echo "Package successfully published to npm registry."
+          if [ -n "${{ secrets.NPM_TOKEN }}" ] && [ -f "package.json" ]; then
+            IS_PRIVATE=$(node -p "Boolean(require('./package.json').private)" 2>/dev/null || echo "true")
+            if [ "$IS_PRIVATE" != "true" ]; then
+              echo "//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}" > ~/.npmrc
+              npm publish --access public
+              echo "Package successfully published to npm registry."
+            else
+              echo "package.json is marked private; skipping npm publish."
+            fi
           else
-            echo "NPM_TOKEN not set; skipping npm registry publish."
+            echo "NPM_TOKEN not set or not a publishable package; skipping npm publish."
           fi
