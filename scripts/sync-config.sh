@@ -64,13 +64,10 @@ init_downstream() {
   log_info "Initializing downstream project layout..."
   mkdir -p src test scripts "${MAKELIB_DIR}"
 
-  if [ ! -f "package.json" ]; then
-    if [ -f "$TEMPLATES_DIR/package.json" ]; then
-      cp "$TEMPLATES_DIR/package.json" "package.json"
-    else
-      curl -fsSL "${RAW_BASE_URL}/package.json" -o "package.json" 2>/dev/null || true
-    fi
-    log_info "Created initial package.json from template"
+  if [ -f "${MAKELIB_DIR}/package.json" ]; then
+    log_info "Installing isolated makelib toolchain in ${MAKELIB_DIR}..."
+    npm --prefix "${MAKELIB_DIR}" install --silent --no-audit --no-fund 2>/dev/null || npm --prefix "${MAKELIB_DIR}" install
+    log_success "Makelib toolchain ready in ${MAKELIB_DIR}/node_modules"
   fi
 
   for file in "${CONFIG_FILES[@]}"; do

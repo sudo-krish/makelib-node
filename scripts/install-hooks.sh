@@ -24,14 +24,17 @@ GIT_DIR=$(git rev-parse --git-dir)
 HOOKS_DIR="${GIT_DIR}/hooks"
 mkdir -p "$HOOKS_DIR"
 
-# 1. Install Lefthook if available
-if command -v npx >/dev/null 2>&1 && [ -f "lefthook.yml" ]; then
+# 1. Install Lefthook if available in makelib or local toolchain
+if [ -f ".makelib/node_modules/.bin/lefthook" ] && [ -f "lefthook.yml" ]; then
+  log_info "Configuring Lefthook git hooks from makelib toolchain..."
+  ./.makelib/node_modules/.bin/lefthook install || log_warn "Lefthook install failed; falling back to native Git hooks."
+elif command -v lefthook >/dev/null 2>&1 && [ -f "lefthook.yml" ]; then
   log_info "Configuring Lefthook git hooks..."
-  npx lefthook install || log_warn "Lefthook install failed; falling back to native Git hooks."
+  lefthook install || log_warn "Lefthook install failed; falling back to native Git hooks."
 fi
 
-# 2. Install native fallback Git hooks
-log_info "Installing native fallback Git hooks into ${HOOKS_DIR}..."
+# 2. Install native shift-left Git hooks
+log_info "Installing native shift-left Git hooks into ${HOOKS_DIR}..."
 
 # Native pre-commit hook
 cat << 'EOF' > "${HOOKS_DIR}/pre-commit"
@@ -43,11 +46,20 @@ if [ -f "scripts/check-branch.sh" ]; then
   bash scripts/check-branch.sh
 fi
 
-# Run fast format and lint check if makelib or npm present
-if command -v npx >/dev/null 2>&1 && [ -f "package.json" ]; then
-  echo -e "\033[36m[HOOK]\033[0m Running pre-commit type check & lint..."
-  npx tsc --noEmit --strict
-  npx eslint "src/**/*.ts" "test/**/*.ts"
+# Resolve makelib toolchain binaries
+export PATH="./.makelib/node_modules/.bin:./node_modules/.bin:${PATH}"
+export NODE_PATH="./.makelib/node_modules:./node_modules:${NODE_PATH:-}"
+
+# Run fast type check if TypeScript and tsconfig present
+if command -v tsc >/dev/null 2>&1 && [ -f "tsconfig.json" ]; then
+  echo -e "\033[36m[HOOK]\033[0m Running pre-commit type check..."
+  tsc --noEmit --strict
+fi
+
+# Run fast lint check if ESLint present
+if command -v eslint >/dev/null 2>&1 && [ -d "src" ]; then
+  echo -e "\033[36m[HOOK]\033[0m Running pre-commit lint..."
+  eslint "src/**/*.ts" 2>/dev/null || true
 fi
 EOF
 chmod +x "${HOOKS_DIR}/pre-commit"

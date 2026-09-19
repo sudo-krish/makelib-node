@@ -23,8 +23,9 @@ SCRIPTS_DIR   ?= scripts
 # Configurable quality gate thresholds
 MIN_COVERAGE  ?= 80
 
-# Add local node_modules/.bin to PATH
-export PATH := $(CURDIR)/node_modules/.bin:$(PATH)
+# Add isolated makelib and local node_modules to PATH and NODE_PATH
+export PATH := $(CURDIR)/$(MAKELIB_DIR)/node_modules/.bin:$(CURDIR)/node_modules/.bin:$(PATH)
+export NODE_PATH := $(CURDIR)/$(MAKELIB_DIR)/node_modules:$(CURDIR)/node_modules:$${NODE_PATH:-}
 
 # Configurable toolchain commands
 NODE            ?= node

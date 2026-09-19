@@ -40,7 +40,7 @@ init-makelib: ## Initialize makelib in downstream repository
 		rm -rf "$$TMP_DIR"; \
 		echo "Tarball fetch failed, falling back to direct download..."; \
 		mkdir -p $(MAKELIB_DIR) scripts; \
-		for f in colors.mk quality.mk release.mk hooks.mk core.mk; do \
+		for f in colors.mk quality.mk release.mk hooks.mk package.json core.mk; do \
 			curl -fsSL "$(MAKELIB_URL)/.makelib/$$f" -o "$(MAKELIB_DIR)/$$f" || true; \
 		done; \
 		for s in sync-config.sh check-branch.sh semver-release.sh install-hooks.sh; do \
@@ -64,7 +64,7 @@ update-makelib: ## Update makelib core files to latest ref
 		rm -rf "$$TMP_DIR"; \
 		echo "Tarball fetch failed, falling back to direct download..."; \
 		mkdir -p $(MAKELIB_DIR) scripts; \
-		for f in colors.mk quality.mk release.mk hooks.mk core.mk; do \
+		for f in colors.mk quality.mk release.mk hooks.mk package.json core.mk; do \
 			curl -fsSL "$(MAKELIB_URL)/.makelib/$$f" -o "$(MAKELIB_DIR)/$$f" || true; \
 		done; \
 		for s in sync-config.sh check-branch.sh semver-release.sh install-hooks.sh; do \

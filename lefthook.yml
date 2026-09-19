@@ -8,11 +8,11 @@ pre-commit:
     01-check-branch:
       run: bash scripts/check-branch.sh
     02-format:
-      run: npx prettier --check "{src,test}/**/*.{ts,js,json,md}" --ignore-unknown
+      run: make format-check
     03-lint:
-      run: npx eslint "src/**/*.ts" "test/**/*.ts"
+      run: make lint
     04-type-check:
-      run: npx tsc --noEmit --strict
+      run: make type-check
 
 commit-msg:
   commands:
