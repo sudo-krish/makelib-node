@@ -17,10 +17,24 @@ MAKELIB_DIR  ?= .makelib
 # MIN_COVERAGE ?= 80
 # NO_DEFAULT_BUILD := 1   # Uncomment if downstream defines its own custom build target
 
-.PHONY: init init-makelib update update-makelib
+.PHONY: init init-makelib update update-makelib deps-update setup-ci
 
 init: init-makelib
 update: update-makelib
+
+setup-ci: ## Scaffold GitHub Actions CI/CD workflows pre-configured with recursive submodules
+	@if [ -f "$(MAKELIB_DIR)/scripts/setup-ci.sh" ]; then \
+		bash "$(MAKELIB_DIR)/scripts/setup-ci.sh"; \
+	elif [ -f "scripts/setup-ci.sh" ]; then \
+		bash "scripts/setup-ci.sh"; \
+	fi
+
+deps-update: ## Update all dependencies and Node.js version to latest
+	@if [ -f "$(MAKELIB_DIR)/scripts/update-deps.js" ]; then \
+		node "$(MAKELIB_DIR)/scripts/update-deps.js"; \
+	elif [ -f "scripts/update-deps.js" ]; then \
+		node "scripts/update-deps.js"; \
+	fi
 
 init-makelib: ## Initialize makelib as a submodule, install toolchain, and set up git hooks
 	@if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then \
@@ -45,6 +59,9 @@ init-makelib: ## Initialize makelib as a submodule, install toolchain, and set u
 	@if [ -f "$(MAKELIB_DIR)/scripts/install-hooks.sh" ]; then \
 		bash "$(MAKELIB_DIR)/scripts/install-hooks.sh"; \
 	fi
+	@if [ -f "$(MAKELIB_DIR)/scripts/setup-ci.sh" ]; then \
+		bash "$(MAKELIB_DIR)/scripts/setup-ci.sh"; \
+	fi
 	@echo "makelib-node initialized successfully! Run 'make check-all' or 'make help'."
 
 update-makelib: ## Update makelib submodule to latest remote revision
@@ -60,7 +77,16 @@ update-makelib: ## Update makelib submodule to latest remote revision
 ifeq ($(wildcard $(MAKELIB_DIR)/core.mk),)
 .DEFAULT_GOAL := help-uninitialized
 
+# If makelib is not yet initialized and user runs another target, auto-initialize
+ifeq ($(wildcard $(MAKELIB_DIR)/core.mk),)
+.DEFAULT_GOAL := help-uninitialized
+
 help-uninitialized:
 	@echo "makelib-node is not initialized in '$(MAKELIB_DIR)'."
 	@echo "Run 'make init' to automatically add the submodule and configure the toolchain."
+
+%:
+	@echo "makelib-node is not initialized in '$(MAKELIB_DIR)'. Auto-initializing..."
+	@$(MAKE) init
+	@$(MAKE) $@
 endif

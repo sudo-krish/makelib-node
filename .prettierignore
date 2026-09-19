@@ -1,9 +1,12 @@
 node_modules/
 dist/
+dist-ssr/
 coverage/
 .makelib/
-templates/
+makelib/
+.cache/
 .turbo/
 *.tsbuildinfo
 package-lock.json
 .git/
+*.db*
