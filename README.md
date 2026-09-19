@@ -81,6 +81,7 @@ make check-all
 | `make license-check` | License Compliance           | **`license-checker`**  | Enforces approved open-source licenses (`MIT`, `Apache-2.0`, `BSD-2/3`, `ISC`, `0BSD`). |
 | `make test`          | Testing & Code Coverage      | **Vitest**               | Runs unit tests, enforcing line coverage$\ge 80\%$ (`MIN_COVERAGE`).                          |
 | `make check-all`     | **Master Gate Runner** | All 8 Gates                    | Runs`lint type-check smell audit secret-scan license-check test` sequentially.                  |
+| `make deps-update`   | Dependency & Node Updater    | **`npm-check-updates`**        | Upgrades all dependencies, Node.js runtime, and makelib submodule to latest releases.         |
 
 ---
 
@@ -129,6 +130,31 @@ Run `make install-hooks` to configure both:
 - **Automated Version Bump**: Bumps `package.json` and `package-lock.json` with `npm version <level> --no-git-tag-version`.
 - **Tag & Release Publishing**: Creates an annotated Git tag `v<version>`, pushes to GitHub with `[skip ci]`, and creates a GitHub Release with compiled distribution assets and auto-generated release notes.
 - **NPM Publishing**: Publishes to the NPM registry if `NPM_TOKEN` secret is configured in repository secrets.
+
+### Downstream GitHub Actions Submodule Configuration
+
+> [!IMPORTANT]
+> **Submodule Checkout Required**: By default, `actions/checkout@v4` does **not** clone Git submodules. If `submodules: recursive` is omitted, the `.makelib/` folder remains empty on the GitHub runner, causing Make to fail with:
+> ```
+> make: *** No rule to make target 'format-check'. Stop.
+> ```
+> Always ensure your downstream `.github/workflows/ci.yml` specifies `submodules: recursive`:
+>
+> ```yaml
+> - name: Checkout repository with submodules
+>   uses: actions/checkout@v4
+>   with:
+>     fetch-depth: 0
+>     submodules: recursive
+>
+> - name: Initialize makelib toolchain
+>   run: make init
+>
+> - name: Run all 8 quality gates
+>   run: make check-all
+> ```
+>
+> **Automatic Workflow Generation**: Running `make setup-ci` (or `make init`) in any downstream repository automatically generates `.github/workflows/ci.yml` and `.github/workflows/release.yml` with `submodules: recursive` pre-configured!
 
 ---
 

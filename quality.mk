@@ -8,6 +8,7 @@ FORMAT_PATTERN ?= "{$(SRC_DIR),$(TEST_DIR)}/**/*.{ts,js,json,md}"
 # Configurable toolchain flags (defaulting to makelib root configs if none in workspace root)
 ESLINT_CONFIG_FLAG   ?= $(if $(wildcard eslint.config.*),,--config $(MAKELIB_ROOT)/eslint.config.mjs)
 PRETTIER_CONFIG_FLAG ?= $(if $(wildcard .prettierrc*),,--config $(MAKELIB_ROOT)/.prettierrc)
+PRETTIER_IGNORE_FLAG ?= --ignore-path $(MAKELIB_ROOT)/.prettierignore $(if $(wildcard .prettierignore),--ignore-path .prettierignore,)
 TSC_CONFIG_FLAG      ?= $(if $(wildcard tsconfig.json),,--project $(MAKELIB_ROOT)/tsconfig.json)
 VITEST_CONFIG_FLAG   ?= $(if $(wildcard vitest.config.*),,--config $(MAKELIB_ROOT)/vitest.config.ts)
 
@@ -15,12 +16,12 @@ VITEST_CONFIG_FLAG   ?= $(if $(wildcard vitest.config.*),,--config $(MAKELIB_ROO
 
 format: ## Format source and test files with Prettier
 	@echo -e "$(GATE_PREFIX) Running Prettier (format write)..."
-	@$(PRETTIER) $(PRETTIER_CONFIG_FLAG) --write $(FORMAT_PATTERN) --ignore-unknown
+	@$(PRETTIER) $(PRETTIER_CONFIG_FLAG) $(PRETTIER_IGNORE_FLAG) --write $(FORMAT_PATTERN) --ignore-unknown
 	@echo -e "$(SUCCESS_PREFIX) Codebase formatted successfully."
 
 format-check: ## Verify formatting with Prettier without modifying files
 	@echo -e "$(GATE_PREFIX) Checking formatting with Prettier..."
-	@$(PRETTIER) $(PRETTIER_CONFIG_FLAG) --check $(FORMAT_PATTERN) --ignore-unknown
+	@$(PRETTIER) $(PRETTIER_CONFIG_FLAG) $(PRETTIER_IGNORE_FLAG) --check $(FORMAT_PATTERN) --ignore-unknown
 	@echo -e "$(SUCCESS_PREFIX) Formatting check passed."
 
 lint: ## Run ESLint strict checks

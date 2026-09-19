@@ -24,6 +24,73 @@ GIT_DIR=$(git rev-parse --git-dir)
 HOOKS_DIR="${GIT_DIR}/hooks"
 mkdir -p "$HOOKS_DIR"
 
+# 0. Ensure lefthook.yml is present in workspace root
+if [ ! -f "lefthook.yml" ]; then
+  for candidate in ".makelib/lefthook.yml" "makelib/lefthook.yml"; do
+    if [ -f "$candidate" ]; then
+      log_info "Scaffolding lefthook.yml from $candidate..."
+      cp "$candidate" "./lefthook.yml"
+      break
+    fi
+  done
+  if [ ! -f "lefthook.yml" ]; then
+    log_info "Creating default lefthook.yml..."
+    cat << 'EOF' > "lefthook.yml"
+# ==============================================================================
+# lefthook.yml — Shift-Left Git Hook Pipeline
+# ==============================================================================
+
+pre-commit:
+  parallel: false
+  commands:
+    01-check-branch:
+      run: make check-branch
+    02-format:
+      run: make format-check
+    03-lint:
+      run: make lint
+    04-type-check:
+      run: make type-check
+
+commit-msg:
+  commands:
+    check-branch:
+      run: make check-branch
+EOF
+  fi
+else
+  log_info "lefthook.yml already exists; preserving."
+  MISSING_HOOKS=()
+  if ! grep -q "make format-check\|make format" "lefthook.yml"; then
+    MISSING_HOOKS+=("make format-check")
+  fi
+  if ! grep -q "make lint" "lefthook.yml"; then
+    MISSING_HOOKS+=("make lint")
+  fi
+  if ! grep -q "make type-check" "lefthook.yml"; then
+    MISSING_HOOKS+=("make type-check")
+  fi
+  if ! grep -q "make check-branch\|check-branch" "lefthook.yml"; then
+    MISSING_HOOKS+=("make check-branch")
+  fi
+
+  if [ ${#MISSING_HOOKS[@]} -gt 0 ]; then
+    echo -e "${COLOR_YELLOW}======================================================================${COLOR_RESET}"
+    echo -e "${COLOR_YELLOW}[WARN] Existing lefthook.yml is missing recommended quality hooks:${COLOR_RESET}"
+    for hook in "${MISSING_HOOKS[@]}"; do
+      echo -e "${COLOR_YELLOW}       - ${hook}${COLOR_RESET}"
+    done
+    echo -e "${COLOR_YELLOW}       Consider adding them to your pre-commit commands in lefthook.yml:${COLOR_RESET}"
+    echo -e "         pre-commit:"
+    echo -e "           commands:"
+    echo -e "             01-check-branch: { run: make check-branch }"
+    echo -e "             02-format:       { run: make format-check }"
+    echo -e "             03-lint:         { run: make lint }"
+    echo -e "             04-type-check:   { run: make type-check }"
+    echo -e "${COLOR_YELLOW}======================================================================${COLOR_RESET}"
+  fi
+fi
+
 # 1. Install Lefthook if available in makelib or local toolchain
 LEFTHOOK_BIN=""
 for candidate in "./.makelib/node_modules/.bin/lefthook" "./makelib/node_modules/.bin/lefthook" "./node_modules/.bin/lefthook"; do

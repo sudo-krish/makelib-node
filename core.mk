@@ -50,14 +50,22 @@ LICENSE_CHECKER ?= $(firstword $(wildcard $(CURDIR)/$(MAKELIB_ROOT)/node_modules
 
 .DEFAULT_GOAL := help
 
-.PHONY: help clean build makelib-install init
+.PHONY: help clean build makelib-install init deps-update update-deps setup-ci
 
 makelib-install: ## Install makelib toolchain dependencies isolated inside submodule
 	@echo -e "$(INFO_PREFIX) Installing isolated makelib toolchain in $(MAKELIB_ROOT)..."
 	@npm --prefix "$(MAKELIB_ROOT)" ci || npm --prefix "$(MAKELIB_ROOT)" install
 	@echo -e "$(SUCCESS_PREFIX) Toolchain ready in $(MAKELIB_ROOT)/node_modules."
 
-init: makelib-install install-hooks ## Initialize makelib toolchain and install git hooks
+init: makelib-install install-hooks setup-ci ## Initialize makelib toolchain, git hooks, and CI workflows
+
+setup-ci: ## Scaffold GitHub Actions CI/CD workflows pre-configured with recursive submodules
+	@bash $(SCRIPTS_DIR)/setup-ci.sh
+
+deps-update: ## Update all dependencies and Node.js version to latest
+	@node $(SCRIPTS_DIR)/update-deps.js
+
+update-deps: deps-update ## Alias for deps-update
 
 help: ## Display this colorized, self-documenting help menu
 	@echo -e "$(COLOR_BOLD)$(COLOR_CYAN)======================================================================$(COLOR_RESET)"

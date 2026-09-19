@@ -6,7 +6,7 @@ pre-commit:
   parallel: false
   commands:
     01-check-branch:
-      run: bash scripts/check-branch.sh
+      run: make check-branch
     02-format:
       run: make format-check
     03-lint:
@@ -17,4 +17,4 @@ pre-commit:
 commit-msg:
   commands:
     check-branch:
-      run: bash scripts/check-branch.sh
+      run: make check-branch
