@@ -54,16 +54,18 @@ make init
 
 This bootstraps:
 
-- `.makelib/` (`core.mk`, `colors.mk`, `quality.mk`, `release.mk`, `hooks.mk`)
+- `.makelib/` (`core.mk`, `colors.mk`, `quality.mk`, `release.mk`, `hooks.mk`, `package.json`)
+- Isolated diagnostic toolchain in `.makelib/node_modules/`
 - `scripts/` (`sync-config.sh`, `check-branch.sh`, `semver-release.sh`, `install-hooks.sh`)
 - Golden toolchain configs (`tsconfig.json`, `eslint.config.mjs`, `.prettierrc`, `vitest.config.ts`, `lefthook.yml`, `.secrets.baseline`)
 
-### Step 3: Install dependencies and activate shift-left hooks
+### Step 3: Activate shift-left hooks
 
 ```bash
-npm install
 make install-hooks
 ```
+
+> **Zero Dependency Pollution**: Makelib manages its own diagnostic toolchain privately inside `.makelib/node_modules/`. Your downstream project's `package.json` and dependencies remain 100% untouched and independent.
 
 ---
 
